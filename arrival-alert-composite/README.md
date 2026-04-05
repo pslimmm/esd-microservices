@@ -5,3 +5,7 @@ fill in env
 flask run
 
 api at link/apidocs
+
+docker setup:
+add env
+docker compose up -d
