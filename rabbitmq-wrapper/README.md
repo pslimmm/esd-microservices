@@ -2,17 +2,21 @@ we are using arrival-alert-wrapper only,
 order-wrapper is no longer used as we decided to directly use http
 
 setup:
+add .env in using .env.example
+- rabbitmq-wrapper\arrival-alert-wrapper\
 
-add .env in 
-- rabbitmq-wrapper\arrival-alert-wrapper\rabbitmq-arrival-consumer-wrapper
-- rabbitmq-wrapper\arrival-alert-wrapper\rabbitmq-arrival-publisher-wrapper
-
-still in the main rabbitmq-wrapper:
-  docker compose up -d
-
+still in the main rabbitmq-wrapper folder:
+```
+docker compose up -d
+```
 then:
-cd 'rabbitmq-wrapper\arrival-alert-wrapper\rabbitmq-arrival-publisher-wrapper'
+```
+cd 'rabbitmq-wrapper\arrival-alert-wrapper
+npm i or pnpm i
 node index
+```
 
-cd 'rabbitmq-wrapper\arrival-alert-wrapper\rabbitmq-arrival-consumer-wrapper'
+and in another terminal window:
+```
 node consumer
+```

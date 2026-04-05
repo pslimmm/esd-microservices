@@ -2,11 +2,11 @@ require("dotenv").config();
 const amqp = require("amqplib");
 const axios = require("axios");
 
-const RABBITMQ_URL = process.env.RABBITMQ_URL;
-const QUEUE = process.env.QUEUE_NAME;
+const RABBITMQ_URL = process.env.CONSUMER_RABBITMQ_URL;
+const QUEUE = process.env.CONSUMER_QUEUE_NAME;
 const EXCHANGE = "topic.exchange";
 const ROUTING_KEY = "arrival";
-const API = process.env.API;
+const API = process.env.CONSUMER_API;
 
 let conn;
 let channel;
