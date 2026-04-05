@@ -5,9 +5,39 @@ from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 from datetime import date, datetime
 from concurrent.futures import ThreadPoolExecutor
+from flasgger import Swagger
 
 load_dotenv()
 app = Flask(__name__)
+
+# --- Swagger Setup ---
+swagger_config = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": 'apispec_1',
+            "route": '/apispec_1.json',
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/apidocs/"
+}
+
+template = {
+    "swagger": "2.0",
+    "info": {
+        "title": "Gantry Arrival Service API",
+        "description": "Handles vehicle arrivals, order status updates, and background notifications.",
+        "version": "1.0.0"
+    }
+}
+
+swagger = Swagger(app, config=swagger_config, template=template)
+# ---------------------
+
 # Increased workers to handle background updates and emails simultaneously
 executor = ThreadPoolExecutor(max_workers=20)
 
@@ -44,6 +74,40 @@ def background_processing(email, subject, message, order_id=None, merchant_id=No
 
 @app.route('/arrival', methods=['POST'])
 async def handle_arrival():
+    """
+    Handle Vehicle Arrival at Gantry
+    ---
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - license_plate
+          properties:
+            license_plate:
+              type: string
+              example: "SMS1111R"
+              description: The license plate of the arriving vehicle.
+    responses:
+      200:
+        description: Arrival processed (Order found and Gantry notified)
+        schema:
+          type: object
+          properties:
+            status:
+              type: integer
+              example: 200
+            message:
+              type: string
+              example: "Arrival recorded for SMS1111R"
+      400:
+        description: Bad Request - Missing license_plate
+      404:
+        description: Not Found - No orders found for this plate today
+    """
+
     data = request.get_json()
     if not data or 'license_plate' not in data:
         return jsonify({"error": "Missing license_plate"}), 400
