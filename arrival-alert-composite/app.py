@@ -179,4 +179,4 @@ def handle_arrival():
     return jsonify({"status": 200, "message": f"Arrival recorded for {license_plate}"}), 200
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(port=5000)

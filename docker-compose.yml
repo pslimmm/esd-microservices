@@ -1,0 +1,59 @@
+services:
+  arrival:
+    build: 
+      context: ./arrival-alert-composite
+      dockerfile: arrival.Dockerfile
+    ports:
+      - "${PORT:-6767}:5000"
+    env_file:
+      - ./arrival-alert-composite/.env
+    environment:
+      - TZ=Asia/Singapore
+    # uncomment for development with hot reload
+    # volumes:
+    #   - "./arrival-alert-composite:/app" 
+    # environment:
+    #   - FLASK_ENV=development
+    # networks:     # uncomment for gantry ui
+    #   - drivethrough-net  
+    restart: always
+
+  merchant:
+    build: 
+      context: ./merchant-management-composite
+      dockerfile: merchant.Dockerfile
+    ports:
+      - "6768:5000"
+    env_file:
+      - ./merchant-management-composite/.env
+    environment:
+      - TZ=Asia/Singapore
+    # volumes:
+    #   - "./merchant-management-composite:/app" # DELETE ONCE DONE WITH DEVELOPMENT
+    # environment:
+    #   - FLASK_ENV=development
+    restart: always
+
+  consumer:
+    build: 
+      context: ./notification-rabbitmq-wrapper/consumer
+      dockerfile: consumer.Dockerfile
+    container_name: rabbit_consumer
+    env_file:
+      - ./notification-rabbitmq-wrapper/.env
+    restart: always
+
+  publisher:
+    build: 
+      context: ./notification-rabbitmq-wrapper/publisher
+      dockerfile: publisher.Dockerfile
+    container_name: rabbit_publisher
+    ports:
+      - "6700:3000"
+    restart: always
+    env_file:
+      - ./notification-rabbitmq-wrapper/.env
+
+# networks:         # uncomment for gantry ui
+#   drivethrough-net:
+#     external: true
