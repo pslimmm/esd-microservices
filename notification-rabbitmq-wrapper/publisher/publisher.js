@@ -5,7 +5,7 @@ const amqp = require("amqplib");
 const app = express();
 app.use(express.json());
 
-const RABBITMQ_URL = process.env.PUBLISHER_RABBITMQ_URL;
+const RABBITMQ_URL = process.env.RABBITMQ_URL;
 const EXCHANGE = "topic.exchange";
 const NOTIFICATION_ROUTING_KEY = ".notification";
 const PORT = process.env.PUBLISHER_PORT;
