@@ -1,5 +1,5 @@
 services:
-  arrival:
+  merchant:
     build: 
       context: .
       dockerfile: merchant.Dockerfile
