@@ -1,0 +1,14 @@
+services:
+  arrival:
+    build: 
+      context: .
+      dockerfile: merchant.Dockerfile
+    ports:
+      - 6768:5000
+    env_file:
+      - .env
+    volumes:
+      - ".:/app" # DELETE ONCE DONE WITH DEVELOPMENT
+    environment:
+      - FLASK_ENV=development
+    restart: always

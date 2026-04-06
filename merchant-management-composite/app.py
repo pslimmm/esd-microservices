@@ -41,6 +41,9 @@ load_dotenv()
 # Configuration
 # -----------------------------------------------
 ORDER_API_URL = os.environ.get("ORDER_API")
+CUSTOMER_API = os.environ.get("CUSTOMER_API")
+PUBLISHER_API = os.environ.get("PUBLISHER_API")
+MERCHANT_API = os.environ.get("MERCHANT_API")
 TIMEOUT_SECONDS = 8
 
 # Adjust these values to match the actual Order Service enum in OutSystems.
@@ -73,8 +76,8 @@ def order_headers() -> dict:
 # Arrow 1, 2: Get Active Pickups
 # Merchant App -> Merchant Management -> Order
 # -----------------------------------------------
-@app.route('/pickup', methods=['GET'])
-def get_active_pickups():
+@app.route('/pickup/<int:merchant_id>', methods=['GET'])
+def get_active_pickups(merchant_id):
     """
     Get all active pickups
     ---
@@ -97,10 +100,11 @@ def get_active_pickups():
     """
     try:
         response = requests.get(
-            f"{ORDER_API_URL}/order",
+            f"{ORDER_API_URL}/order/{merchant_id}",
             headers=order_headers(),
             timeout=TIMEOUT_SECONDS,
         )
+        print(f"{ORDER_API_URL}/order/{merchant_id}",)
 
         if response.status_code == 200:
             active_orders = response.json()['data'] 
@@ -168,13 +172,14 @@ def update_pickup_status():
         order_id = data.get('order_id')
         status_id = data.get('order_status')
         merchant_id = data.get('merchant_id')
+        sc_id = data.get('sc_id')
 
         # Validation: Ensure the status ID exists in our allowed final statuses
         # Note: If ALLOWED_FINAL_STATUSES contains strings, use ORDER_STATUS_CODES to check
         if status_id not in ALLOWED_FINAL_STATUSES:
             return jsonify({
                 "success": False,
-                "message": f"Invalid status ID: {status_id}. Allowed values: HANDED_OVER, NO_SHOW"
+                "message": f"Invalid status ID: {status_id}. Allowed values: 5(HANDED_OVER), 4(NO_SHOW)"
             }), 400 
 
         # Step 1: Verify record exists
@@ -192,12 +197,43 @@ def update_pickup_status():
             }), 500
 
         existing_data = get_response.json()
+
+
         if not existing_data or existing_data.get('data', {}).get('order_id') == 0:
             return jsonify({
                 "success": False,
                 "message": f"Order record {order_id} not found"
             }), 404
 
+        # Fetch customer data
+        order_data = existing_data.get('data', {})
+        customer_id = order_data.get('customer_id')
+        customer_data = {}
+        if customer_id:
+            try:
+                customer_response = requests.get(
+                    f"{CUSTOMER_API}/customer/{customer_id}",
+                    timeout=TIMEOUT_SECONDS
+                )
+                print(customer_response)
+                if customer_response.status_code == 200:
+                    customer_data = customer_response.json().get('data', {})
+            except requests.RequestException:
+                customer_data = None
+
+        merchant_data = {}
+        if merchant_id:
+            try:
+                merchant_response = requests.get(
+                    f"{MERCHANT_API}/merchant/{sc_id}/{merchant_id}",
+                    timeout=TIMEOUT_SECONDS
+                )
+                print(f"{MERCHANT_API}/merchant/{sc_id}/{merchant_id}")
+                print(merchant_response)
+                if merchant_response.status_code == 200:
+                    merchant_data = merchant_response.json().get('data', {})
+            except requests.RequestException:
+                merchant_data = None
         # Step 2 & 3: Forward the received data directly to the Order Service
         put_response = requests.put(
             f"{ORDER_API_URL}/order",
@@ -210,6 +246,15 @@ def update_pickup_status():
             response_body = put_response.json() if (put_response.text and put_response.text not in ["true", "false"]) else put_response.text
             
             status_name = ORDER_STATUS_CODES.get(status_id, "UNKNOWN")
+            
+            # send notification
+            requests.post(PUBLISHER_API, json={
+                "email": customer_data['email'],
+                "subject": f"{merchant_data['merchant_name']} -  Your order has been updated.",
+                "message": f"Hello, {customer_data['customer_name']}, <br/><br/> Your order {order_id} from {merchant_data['merchant_name']} has been marked as {' '.join(status_name.split('_'))}. <br/><br/> For any questions contact us at {merchant_data['contact_number']}. <br/><br/> Thank you for using our service! <br/><br/> Best regards, <br/> {merchant_data['merchant_name']}",
+                "notification_type": "pickup_success"
+            }, timeout=5)
+
 
             return jsonify({
                 "success": True,
@@ -252,7 +297,7 @@ def health_check():
     return jsonify({
         "status": "running",
         "service": "Merchant Management Service",
-        "port": 5001
+        "port": 5000
     }), 200
 
 
@@ -260,4 +305,4 @@ def health_check():
 # Run
 # -----------------------------------------------
 if __name__ == '__main__':
-    app.run(port=5001, debug=True)
+    app.run(port=5000, debug=True)
