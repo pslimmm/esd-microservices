@@ -31,7 +31,14 @@ cd notification-rabbitmq-wrapper/
 # Copy the example environment file
 cp .env.example .env
 ```
+Kong:
+```bash
+# Navigate to the correct directory (from root)
+cd kong/
 
+# Copy the example environment file
+cp .env.example .env
+```
 > **Note:** This tutorial assumes that you are using an external AMQP service, such as cloudamqp
 
 ### 3. Launch with Docker
