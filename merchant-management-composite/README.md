@@ -55,7 +55,7 @@ Ensure your `.env` file is present in the root directory, as Docker Compose will
 ### 2. Build and Launch
 Run the following command to build the images and start the services in detached mode:
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 ### 3. Accessing the API

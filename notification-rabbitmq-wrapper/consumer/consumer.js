@@ -2,7 +2,7 @@ require("dotenv").config();
 const amqp = require("amqplib");
 const axios = require("axios");
 
-const RABBITMQ_URL = process.env.CONSUMER_RABBITMQ_URL;
+const RABBITMQ_URL = process.env.RABBITMQ_URL;
 const NOTIFICATION_QUEUE = process.env.CONSUMER_QUEUE_NAME;
 const EXCHANGE = "topic.exchange";
 const NOTIFICATION_ROUTING_KEY = "*.notification";

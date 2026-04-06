@@ -106,7 +106,7 @@ def handle_arrival():
       404:
         description: Not Found - No orders found for this plate today
     """
-
+    
     data = request.get_json()
     if not data or 'license_plate' not in data:
         return jsonify({"error": "Missing license_plate"}), 400
