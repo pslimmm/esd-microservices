@@ -1,4 +1,4 @@
-# Arrival Alert Composite Service
+# Merchant Management Composite Service
 
 This repository contains a Flask-based API. Below are the instructions to get the application up and running using either a local Python environment or Docker Compose.
 
@@ -39,6 +39,9 @@ flask run
 ```
 Once the server is running, you can access the API documentation at:
 **`http://127.0.0.1:5000/apidocs`**
+or 
+**`http://127.0.0.1:5001/apidocs`**
+if you happen to have another Flask API running
 
 ---
 
@@ -57,7 +60,7 @@ docker compose up -d
 
 ### 3. Accessing the API
 The application will be mapped to your host machine. You can view the Swagger/OpenAPI documentation at:
-**`http://localhost:6767/apidocs`**
+**`http://localhost:6768/apidocs`**
 
 ### 4. Stopping the Container
 To stop the services, run:
