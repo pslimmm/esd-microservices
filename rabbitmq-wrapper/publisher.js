@@ -7,7 +7,7 @@ app.use(express.json());
 
 const RABBITMQ_URL = process.env.PUBLISHER_RABBITMQ_URL;
 const EXCHANGE = "topic.exchange";
-const ROUTING_KEY = "arrival";
+const NOTIFICATION_ROUTING_KEY = ".notification";
 const PORT = process.env.PUBLISHER_PORT;
 
 let conn;
@@ -32,7 +32,7 @@ async function initRabbit() {
   console.log("✅ Publisher connected to RabbitMQ");
 }
 
-app.post("/arrival-publish", async (req, res) => {
+app.post("/notification-publish", async (req, res) => {
   try {
     // Basic safety check
     if (!channel) {
@@ -48,7 +48,7 @@ app.post("/arrival-publish", async (req, res) => {
     await new Promise((resolve, reject) => {
       channel.publish(
         EXCHANGE,
-        ROUTING_KEY,
+        message.notification_type + NOTIFICATION_ROUTING_KEY,
         content,
         { persistent: true },
         (err, ok) => {

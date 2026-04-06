@@ -1,11 +1,11 @@
 import os
-import asyncio
 import httpx
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 from datetime import date, datetime
 from concurrent.futures import ThreadPoolExecutor
 from flasgger import Swagger
+import requests
 
 load_dotenv()
 app = Flask(__name__)
@@ -18,7 +18,7 @@ swagger_config = {
             "endpoint": 'apispec_1',
             "route": '/apispec_1.json',
             "rule_filter": lambda rule: True,
-            "model_filter": lambda tag: True,
+            "model_filter": lambda tag: True, 
         }
     ],
     "static_url_path": "/flasgger_static",
@@ -50,15 +50,14 @@ PUBLISHER_API = os.environ.get("PUBLISHER_API")
 
 # Global client saves ~500ms by reusing TCP connections
 limits = httpx.Limits(max_keepalive_connections=10, max_connections=20)
-async_client = httpx.AsyncClient(limits=limits, timeout=10.0)
+client = httpx.Client(limits=limits, timeout=10.0)
 
-def background_processing(email, subject, message, order_id=None, merchant_id=None, status=None):
+def background_processing(email, subject, message, order_id=None, merchant_id=None, status=None, notification_type="general"):
     """Handles slow IO (Emails and DB Updates) without blocking the Gantry."""
-    import requests
     # 1. Send the Notification
     try:
         requests.post(PUBLISHER_API, json={
-            "email": email, "subject": subject, "message": message, "notification_type": "info"
+            "email": email, "subject": subject, "message": message, "notification_type": notification_type
         }, timeout=5)
     except Exception as e:
         print(f"Notification error: {e}")
@@ -73,7 +72,7 @@ def background_processing(email, subject, message, order_id=None, merchant_id=No
             print(f"DB Update error: {e}")
 
 @app.route('/arrival', methods=['POST'])
-async def handle_arrival():
+def handle_arrival():
     """
     Handle Vehicle Arrival at Gantry
     ---
@@ -115,7 +114,7 @@ async def handle_arrival():
     license_plate = data['license_plate']
     
     # 1. Fetch Orders (Critical Path)
-    order_res = await async_client.get(f"{ORDER_API}/order/plate?plate_num={license_plate}&date={date.today()}")
+    order_res = client.get(f"{ORDER_API}/order/plate?plate_num={license_plate}&date={date.today()}")
     if order_res.status_code != 200 or "data" not in order_res.json():
         return jsonify({"status": 404, "errorMsg": "No orders found"}), 404
     
@@ -125,19 +124,18 @@ async def handle_arrival():
     final_customer_name = "Customer"
 
     # 2. Prepare ALL metadata requests to run in parallel
-    metadata_tasks = []
+    # Fetch customer once (all orders have same customer)
+    customer_id = orders[0]['customer_id']
+    customer_res = client.get(f"{CUSTOMER_API}/customer/{customer_id}")
+    # Fetch merchants for each order
+    merchant_responses = []
     for order in orders:
-        metadata_tasks.append(async_client.get(f"{CUSTOMER_API}/customer/{order['customer_id']}"))
-        metadata_tasks.append(async_client.get(f"{MERCHANT_API}/merchant/{order['sc_id']}/{order['merchant_id']}"))
-    
-    # Wait for ALL customers and merchants at once (Collapses time significantly)
-    meta_responses = await asyncio.gather(*metadata_tasks)
-
+        merchant_responses.append(client.get(f"{MERCHANT_API}/merchant/{order['sc_id']}/{order['merchant_id']}"))
     # 3. Process Logic with your original message templates
-    for i in range(0, len(meta_responses), 2):
-        c_data = meta_responses[i].json()["data"]
-        m_data = meta_responses[i+1].json()["data"]
-        order = orders[i // 2]
+    c_data = customer_res.json()["data"]  # Customer data (same for all orders)
+    for i, merchant_res in enumerate(merchant_responses):
+        m_data = merchant_res.json()["data"]
+        order = orders[i]  # Corresponding order
         
         final_customer_name = c_data['customer_name']
         time_now = datetime.now().time()
@@ -148,19 +146,19 @@ async def handle_arrival():
             # STATUS 3: CLOSED
             msg = f"Hi {c_data['customer_name']},<br/><br/>We have closed for today, please come back when we open to retry your item pickup <br/><br/>- {m_data['merchant_name']}"
             executor.submit(background_processing, c_data['email'], f"{m_data['merchant_name']} - We missed you today, {c_data['customer_name']}.", msg, 
-                            order['order_id'], order['merchant_id'], 3)
+                            order['order_id'], order['merchant_id'], 3, notification_type="customer")
             
         elif time_now < opening:
             # TOO EARLY
             msg = f"Hi {c_data['customer_name']},<br/><br/>We noticed you came before we open and we are still busy setting up! Please come back later today when we open from {m_data['opening_time'][:5]} to {m_data['closing_time'][:5]} <br/><br/>- {m_data['merchant_name']}"
-            executor.submit(background_processing, c_data['email'], f"{m_data['merchant_name']} - We haven't finished setting up!", msg)
+            executor.submit(background_processing, c_data['email'], f"{m_data['merchant_name']} - We haven't finished setting up!", msg, notification_type="customer")
             
         else:
             # STATUS 2: SUCCESSFUL ARRIVAL
             master_status = 2
             staff_msg = f"Hi Staff, <br/<br/>Customer {c_data['customer_name']} has arrived to pickup order {order['order_id']}, please prepare to deliver the order to the loading bay slot."
             executor.submit(background_processing, m_data['email'], f"[ORDER] Customer {c_data['customer_name']} has arrived to pickup order {order['order_id']}", staff_msg, 
-                            order['order_id'], order['merchant_id'], 2)
+                            order['order_id'], order['merchant_id'], 2, notification_type="customer")
 
     # 4. Single Gantry Call (Critical Path)
     gantry_payload = {
@@ -171,12 +169,12 @@ async def handle_arrival():
         "RequestedBy": final_customer_name
     }
     
-    gantry_res = await async_client.post(f"{GANTRY_API}/{license_plate}", json=gantry_payload)
+    gantry_res = client.post(f"{GANTRY_API}/{license_plate}", json=gantry_payload)
     
     # Check for Gantry Availability
     if gantry_res.status_code == 200 and gantry_res.json().get('AccessStatus') == 'WAITING':
         wait_msg = f"Dear {final_customer_name}, <br/><br/>Please be informed that we currently have no available loading slots, please wait or come back in a few minutes"
-        executor.submit(background_processing, first_order.get('email'), "No Slots Available now", wait_msg)
+        executor.submit(background_processing, first_order.get('email'), "No Slots Available now", wait_msg, notification_type="gantry")
 
     return jsonify({"status": 200, "message": f"Arrival recorded for {license_plate}"}), 200
 

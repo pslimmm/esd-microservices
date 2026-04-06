@@ -3,9 +3,9 @@ const amqp = require("amqplib");
 const axios = require("axios");
 
 const RABBITMQ_URL = process.env.CONSUMER_RABBITMQ_URL;
-const QUEUE = process.env.CONSUMER_QUEUE_NAME;
+const NOTIFICATION_QUEUE = process.env.CONSUMER_QUEUE_NAME;
 const EXCHANGE = "topic.exchange";
-const ROUTING_KEY = "arrival";
+const NOTIFICATION_ROUTING_KEY = "*.notification";
 const API = process.env.CONSUMER_API;
 
 let conn;
@@ -24,15 +24,15 @@ async function startConsumer() {
     });
 
     await channel.assertExchange(EXCHANGE, "topic", { durable: true });
-    await channel.assertQueue(QUEUE, { durable: true });
-    await channel.bindQueue(QUEUE, EXCHANGE, ROUTING_KEY);
+    await channel.assertQueue(NOTIFICATION_QUEUE, { durable: true });
+    await channel.bindQueue(NOTIFICATION_QUEUE, EXCHANGE, NOTIFICATION_ROUTING_KEY);
 
     // BEST PRACTICE: Limit unacked messages to prevent memory overload
     await channel.prefetch(10); 
 
     console.log("📥 Waiting for messages...");
 
-    channel.consume(QUEUE, async (msg) => {
+    channel.consume(NOTIFICATION_QUEUE, async (msg) => {
       if (!msg) return;
 
       let data;

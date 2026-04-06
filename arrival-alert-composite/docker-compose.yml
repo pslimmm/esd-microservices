@@ -1,16 +1,16 @@
 version: '3.8'
 
 services:
-  web:
+  arrival:
     build: 
       context: .
       dockerfile: arrival.Dockerfile
     ports:
-      - "${PORT:-5000}:5000"
+      - "${PORT:-6767}:5000"
     env_file:
       - .env
     volumes:
-      - .:/app
+      - ".:/app" # DELETE ONCE DONE WITH DEVELOPMENT
     environment:
       - FLASK_ENV=development
     restart: always
