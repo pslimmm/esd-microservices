@@ -252,7 +252,7 @@ def update_pickup_status():
                 "email": customer_data['email'],
                 "subject": f"{merchant_data['merchant_name']} -  Your order has been updated.",
                 "message": f"Hello, {customer_data['customer_name']}, <br/><br/> Your order {order_id} from {merchant_data['merchant_name']} has been marked as {' '.join(status_name.split('_'))}. <br/><br/> For any questions contact us at {merchant_data['contact_number']}. <br/><br/> Thank you for using our service! <br/><br/> Best regards, <br/> {merchant_data['merchant_name']}",
-                "notification_type": "pickup_success"
+                "notification_type": "pickup_update"
             }, timeout=5)
 
 
