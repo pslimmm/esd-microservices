@@ -52,7 +52,7 @@ PUBLISHER_API = os.environ.get("PUBLISHER_API")
 limits = httpx.Limits(max_keepalive_connections=10, max_connections=20)
 client = httpx.Client(limits=limits, timeout=10.0)
 
-def background_processing(email, subject, message, order_id=None, merchant_id=None, status=None, notification_type="general"):
+def background_processing(email, subject, message, order_id=None, merchant_id=None, status=None, notification_type="general", sc_id=None):
     """Handles slow IO (Emails and DB Updates) without blocking the Gantry."""
     # 1. Send the Notification
     try:
@@ -66,7 +66,7 @@ def background_processing(email, subject, message, order_id=None, merchant_id=No
     if order_id and status:
         try:
             requests.put(f"{ORDER_API}/order", json={
-                "order_id": order_id, "order_status": status, "merchant_id": merchant_id
+                "order_id": order_id, "order_status": status, "merchant_id": merchant_id, sc_id: sc_id
             }, timeout=5)
         except Exception as e:
             print(f"DB Update error: {e}")
@@ -158,7 +158,7 @@ def handle_arrival():
             master_status = 2
             staff_msg = f"Hi Staff, <br/<br/>Customer {c_data['customer_name']} has arrived to pickup order {order['order_id']}, please prepare to deliver the order to the loading bay slot."
             executor.submit(background_processing, m_data['email'], f"[ORDER] Customer {c_data['customer_name']} has arrived to pickup order {order['order_id']}", staff_msg, 
-                            order['order_id'], order['merchant_id'], 2, notification_type="customer")
+                            order['order_id'], order['merchant_id'], status=master_status, notification_type="customer", sc_id=order['sc_id'])
 
     # 4. Single Gantry Call (Critical Path)
     gantry_payload = {
