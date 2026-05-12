@@ -1,4 +1,13 @@
-composite services, wrapper services, etc
+## Things to take note of
+This repository includes:
+- customer arrival alert composite service
+- kong api gateway setup
+- merchant management dashboard composite service
+- rabbitmq notification wrapper service
+
+What this repository doesn't include:
+- atomic microservices (these were implemented on OutSystems)
+
 ## 🚀 Quick Start
 
 ### 1. Prerequisites
