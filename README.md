@@ -1,3 +1,6 @@
+# PickNGo Microservices Repository
+Video link: https://youtu.be/TXE14RBDQso
+
 ## Things to take note of
 This repository includes:
 - customer arrival alert composite service
